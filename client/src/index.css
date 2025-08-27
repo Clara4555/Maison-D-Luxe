@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  
+  body {
+    @apply bg-primary-50 dark:bg-charcoal-900 text-charcoal-900 dark:text-primary-50;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .glass-effect {
+    @apply bg-white/20 dark:bg-charcoal-800/20 backdrop-blur-md border border-white/30 dark:border-charcoal-700/30;
+  }
+  
+  .gradient-text {
+    @apply bg-gradient-to-r from-wine-600 to-gold-500 bg-clip-text text-transparent;
+  }
+  
+  .btn-primary {
+    @apply bg-wine-600 hover:bg-wine-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:scale-105 hover:shadow-lg;
+  }
+  
+  .btn-secondary {
+    @apply bg-gold-500 hover:bg-gold-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:scale-105 hover:shadow-lg;
+  }
+  
+  .card-hover {
+    @apply transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:-translate-y-2;
+  }
+  
+  .text-shadow {
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-primary-100 dark:bg-charcoal-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-wine-400 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-wine-600;
+}
