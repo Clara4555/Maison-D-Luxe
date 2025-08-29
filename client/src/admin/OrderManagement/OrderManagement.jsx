@@ -1,55 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, CheckCircle, Clock, Package, XCircle } from 'lucide-react';
+import axios from 'axios';
 import toast from 'react-hot-toast';
 
 const OrderManagement = () => {
   const [orders, setOrders] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mock orders data
-    const mockOrders = [
-      {
-        id: 'ORD-001',
-        customer: 'John Doe',
-        email: 'john@example.com',
-        items: [
-          { name: 'Margherita Pizza', quantity: 1, price: 18.99 },
-          { name: 'Caesar Salad', quantity: 1, price: 12.99 }
-        ],
-        total: 31.98,
-        status: 'pending',
-        orderTime: '2024-01-15T10:30:00Z',
-        deliveryAddress: '123 Main St, City, State'
-      },
-      {
-        id: 'ORD-002',
-        customer: 'Jane Smith',
-        email: 'jane@example.com',
-        items: [
-          { name: 'Classic Burger', quantity: 2, price: 14.99 }
-        ],
-        total: 29.98,
-        status: 'preparing',
-        orderTime: '2024-01-15T11:15:00Z',
-        deliveryAddress: '456 Oak Ave, City, State'
-      },
-      {
-        id: 'ORD-003',
-        customer: 'Mike Johnson',
-        email: 'mike@example.com',
-        items: [
-          { name: 'Margherita Pizza', quantity: 1, price: 18.99 }
-        ],
-        total: 18.99,
-        status: 'completed',
-        orderTime: '2024-01-15T09:45:00Z',
-        deliveryAddress: '789 Pine St, City, State'
-      }
-    ];
-    setOrders(mockOrders);
-  }, []);
+    fetchOrders();
+  }, [filterStatus]);
+
+  const fetchOrders = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('/api/orders', {
+        headers: { 'auth-token': token },
+        params: { status: filterStatus }
+      });
+      setOrders(response.data.orders);
+    } catch (error) {
+      console.error('Failed to fetch orders:', error);
+      toast.error('Failed to load orders');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const statusOptions = [
     { value: 'all', label: 'All Orders' },
@@ -60,17 +38,28 @@ const OrderManagement = () => {
   ];
 
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.customer.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         order.customer.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || order.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
 
-  const updateOrderStatus = (orderId, newStatus) => {
-    setOrders(orders.map(order => 
-      order.id === orderId ? { ...order, status: newStatus } : order
-    ));
-    toast.success(`Order ${orderId} marked as ${newStatus}`);
+  const updateOrderStatus = async (orderId, newStatus) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(`/api/orders/${orderId}/status`, 
+        { status: newStatus },
+        { headers: { 'auth-token': token } }
+      );
+      
+      setOrders(orders.map(order => 
+        order._id === orderId ? { ...order, status: newStatus } : order
+      ));
+      toast.success(`Order marked as ${newStatus}`);
+    } catch (error) {
+      console.error('Failed to update order status:', error);
+      toast.error('Failed to update order status');
+    }
   };
 
   const getStatusIcon = (status) => {
@@ -104,9 +93,22 @@ const OrderManagement = () => {
   };
 
   const formatTime = (timeString) => {
-    return new Date(timeString).toLocaleString();
+    return new Date(timeString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-wine-600"></div>
+      </div>
+    );
+  }
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -147,12 +149,12 @@ const OrderManagement = () => {
       {/* Orders List */}
       <div className="space-y-4">
         {filteredOrders.map((order) => (
-          <div key={order.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+          <div key={order._id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
             <div className="flex justify-between items-start mb-4">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{order.id}</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{order.customer} • {order.email}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">{formatTime(order.orderTime)}</p>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{order.orderNumber}</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{order.customer.name} • {order.customer.email}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">{formatTime(order.createdAt)}</p>
               </div>
               <div className="text-right">
                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
@@ -179,21 +181,96 @@ const OrderManagement = () => {
               </div>
             </div>
 
-            <div className="mb-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                <span className="font-medium">Delivery Address:</span> {order.deliveryAddress}
-              </p>
-            </div>
+            {order.deliveryAddress && (
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <span className="font-medium">Delivery Address:</span> {order.deliveryAddress.street}, {order.deliveryAddress.city}, {order.deliveryAddress.state} {order.deliveryAddress.zipCode}
+                </p>
+              </div>
+            )}
+
+            {order.specialInstructions && (
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <span className="font-medium">Special Instructions:</span> {order.specialInstructions}
+                </p>
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-2">
               {order.status === 'pending' && (
                 <>
                   <button
-                    onClick={() => updateOrderStatus(order.id, 'preparing')}
+                    onClick={() => updateOrderStatus(order._id, 'confirmed')}
                     className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition duration-200"
                   >
-                    Start Preparing
+                    Confirm Order
                   </button>
+                  <button
+                    onClick={() => updateOrderStatus(order._id, 'cancelled')}
+                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition duration-200"
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
+              {order.status === 'confirmed' && (
+                <button
+                  onClick={() => updateOrderStatus(order._id, 'preparing')}
+                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition duration-200"
+                >
+                  Start Preparing
+                </button>
+              )}
+              {order.status === 'preparing' && (
+                <>
+                  <button
+                    onClick={() => updateOrderStatus(order._id, 'ready')}
+                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition duration-200"
+                  >
+                    Mark Ready
+                  </button>
+                </>
+              )}
+              {order.status === 'ready' && (
+                <button
+                  onClick={() => updateOrderStatus(order._id, 'delivered')}
+                  className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition duration-200"
+                >
+                  Mark Delivered
+                </button>
+              )}
+              {(order.status === 'confirmed' || order.status === 'preparing') && (
+                <button
+                  onClick={() => updateOrderStatus(order._id, 'cancelled')}
+                  className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition duration-200"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+        
+        {filteredOrders.length === 0 && (
+          <div className="text-center py-12">
+            <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No orders found</h3>
+            <p className="text-gray-500 dark:text-gray-400">
+              {searchTerm || filterStatus !== 'all' 
+                ? 'Try adjusting your search or filter criteria'
+                : 'Orders will appear here when customers place them'
+              }
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default OrderManagement;
+
                   <button
                     onClick={() => updateOrderStatus(order.id, 'cancelled')}
                     className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition duration-200"

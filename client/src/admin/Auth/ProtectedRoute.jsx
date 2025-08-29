@@ -8,17 +8,17 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-orange-600"></div>
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-wine-600"></div>
       </div>
     );
   }
 
   if (!user) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/admin/login" />;
   }
 
   if (adminOnly && user.role !== 'admin') {
-    return <Navigate to="/" />;
+    return <Navigate to="/admin/login" />;
   }
 
   return children;

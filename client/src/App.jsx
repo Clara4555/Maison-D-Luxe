@@ -9,6 +9,10 @@ import Chefs from './pages/Chefs';
 import About from './pages/About';
 import Contact from './pages/Contact';
 import Reservations from './pages/Reservations';
+import Checkout from './pages/Checkout';
+import OrderConfirmation from './pages/OrderConfirmation';
+import UserLogin from './pages/UserLogin';
+import UserRegister from './pages/UserRegister';
 import Cart from './components/Cart';
 import Footer from './components/Footer';
 import BackToTop from './components/BackToTop';
@@ -57,6 +61,10 @@ function App() {
                     <Route path="/about" element={<About />} />
                     <Route path="/contact" element={<Contact />} />
                     <Route path="/reservations" element={<Reservations />} />
+                    <Route path="/checkout" element={<Checkout />} />
+                    <Route path="/order-confirmation" element={<OrderConfirmation />} />
+                    <Route path="/login" element={<UserLogin />} />
+                    <Route path="/register" element={<UserRegister />} />
 
                     {/* Admin auth routes */}
                     <Route path="/admin/login" element={<Login />} />
@@ -64,7 +72,7 @@ function App() {
 
                     {/* Protected admin routes */}
                     <Route path="/admin" element={
-                      <ProtectedRoute adminOnly>
+                      <ProtectedRoute adminOnly={true}>
                         <AdminLayout />
                       </ProtectedRoute>
                     }>

@@ -1,10 +1,17 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { FiX, FiPlus, FiMinus, FiShoppingBag } from 'react-icons/fi';
 import { useCart } from '../context/CartContext';
 
 const Cart = () => {
   const { items, isOpen, toggleCart, updateQuantity, removeItem, total } = useCart();
+  const navigate = useNavigate();
+
+  const handleCheckout = () => {
+    toggleCart();
+    navigate('/checkout');
+  };
 
   return (
     <>
@@ -153,8 +160,9 @@ const Cart = () => {
                       className="w-full btn-primary"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
+                      onClick={handleCheckout}
                     >
-                      Proceed to Checkout
+                      Checkout - ${total.toFixed(2)}
                     </motion.button>
                   </div>
                 )}

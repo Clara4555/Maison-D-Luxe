@@ -1,40 +1,59 @@
 import React, { useState, useEffect } from 'react';
-import { Users, DollarSign, ShoppingBag, TrendingUp, Clock, CheckCircle } from 'lucide-react';
+import { Users, DollarSign, ShoppingBag, TrendingUp, Clock, CheckCircle, Package } from 'lucide-react';
 import StatsCard from '../Common/StatsCard';
 import Chart from '../Common/Chart';
 import RecentOrders from '../Common/RecentOrders';
+import axios from 'axios';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
-    totalUsers: 0,
-    totalRevenue: 0,
-    totalOrders: 0,
-    growthRate: 0
+    todayOrders: 0,
+    todayRevenue: 0,
+    monthlyOrders: 0,
+    monthlyRevenue: 0,
+    statusBreakdown: [],
+    recentOrders: []
   });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mock data - replace with real API calls
-    setStats({
-      totalUsers: 1248,
-      totalRevenue: 28540,
-      totalOrders: 856,
-      growthRate: 12.5
-    });
+    fetchDashboardStats();
   }, []);
 
+  const fetchDashboardStats = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('/api/orders/stats/dashboard', {
+        headers: { 'auth-token': token }
+      });
+      setStats(response.data);
+    } catch (error) {
+      console.error('Failed to fetch dashboard stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const chartData = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     datasets: [
       {
         label: 'Revenue',
-        data: [12000, 19000, 15000, 25000, 22000, 28540],
-        borderColor: 'rgb(234, 88, 12)',
-        backgroundColor: 'rgba(234, 88, 12, 0.1)',
+        data: [1200, 1900, 1500, 2500, 2200, 2800, 2100],
+        borderColor: 'rgb(114, 47, 55)',
+        backgroundColor: 'rgba(114, 47, 55, 0.1)',
         tension: 0.4,
       },
     ],
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-wine-600"></div>
+      </div>
+    );
+  }
   return (
     <div className="space-y-6">
       <div>
@@ -45,32 +64,28 @@ const Dashboard = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
-          title="Total Users"
-          value={stats.totalUsers.toLocaleString()}
-          icon={Users}
+          title="Today's Orders"
+          value={stats.todayOrders.toLocaleString()}
+          icon={ShoppingBag}
           color="blue"
-          change="+12%"
         />
         <StatsCard
-          title="Revenue"
-          value={`$${stats.totalRevenue.toLocaleString()}`}
+          title="Today's Revenue"
+          value={`$${stats.todayRevenue.toFixed(2)}`}
           icon={DollarSign}
           color="green"
-          change="+8.2%"
         />
         <StatsCard
-          title="Orders"
-          value={stats.totalOrders.toLocaleString()}
-          icon={ShoppingBag}
+          title="Monthly Orders"
+          value={stats.monthlyOrders.toLocaleString()}
+          icon={Package}
           color="orange"
-          change="+15%"
         />
         <StatsCard
-          title="Growth"
-          value={`${stats.growthRate}%`}
+          title="Monthly Revenue"
+          value={`$${stats.monthlyRevenue.toFixed(2)}`}
           icon={TrendingUp}
           color="purple"
-          change="+3.1%"
         />
       </div>
 
@@ -82,22 +97,14 @@ const Dashboard = () => {
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
-          <div className="space-y-3">
-            <button className="w-full flex items-center p-3 text-left rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-              <Clock className="w-5 h-5 text-orange-600 mr-3" />
-              <div>
-                <p className="font-medium text-gray-900 dark:text-white">Pending Orders</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">8 orders waiting</p>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Order Status</h3>
+          <div className="space-y-4">
+            {stats.statusBreakdown.map((status) => (
+              <div key={status._id} className="flex justify-between items-center">
+                <span className="capitalize text-gray-700 dark:text-gray-300">{status._id}</span>
+                <span className="font-bold text-gray-900 dark:text-white">{status.count}</span>
               </div>
-            </button>
-            <button className="w-full flex items-center p-3 text-left rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-              <CheckCircle className="w-5 h-5 text-green-600 mr-3" />
-              <div>
-                <p className="font-medium text-gray-900 dark:text-white">Today's Completed</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">24 orders completed</p>
-              </div>
-            </button>
+            ))}
           </div>
         </div>
       </div>
@@ -107,7 +114,34 @@ const Dashboard = () => {
         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Orders</h3>
         </div>
-        <RecentOrders />
+        <div className="p-6">
+          {stats.recentOrders.length > 0 ? (
+            <div className="space-y-4">
+              {stats.recentOrders.map((order) => (
+                <div key={order._id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">{order.orderNumber}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{order.customer.name}</p>
+                    <p className="text-xs text-gray-400">{new Date(order.createdAt).toLocaleString()}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-gray-900 dark:text-white">${order.total.toFixed(2)}</p>
+                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                      order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      order.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
+                      order.status === 'completed' ? 'bg-green-100 text-green-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {order.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 dark:text-gray-400 text-center py-8">No recent orders</p>
+          )}
+        </div>
       </div>
     </div>
   );

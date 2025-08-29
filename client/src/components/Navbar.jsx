@@ -4,12 +4,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiMenu, FiX, FiSun, FiMoon, FiShoppingBag } from 'react-icons/fi';
 import { useTheme } from '../context/ThemeContext';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { isDark, toggleTheme } = useTheme();
   const { items, toggleCart } = useCart();
+  const { user, logout } = useAuth();
   const location = useLocation();
 
   const navigation = [
@@ -82,6 +84,44 @@ const Navbar = () => {
 
           {/* Right side buttons */}
           <div className="flex items-center space-x-4">
+            {/* User menu */}
+            {user ? (
+              <div className="flex items-center space-x-3">
+                <span className="text-charcoal-700 dark:text-primary-200 text-sm">
+                  Welcome, {user.name}
+                </span>
+                <button
+                  onClick={logout}
+                  className="text-charcoal-700 dark:text-primary-200 hover:text-wine-600 dark:hover:text-gold-400 text-sm font-medium"
+                >
+                  Logout
+                </button>
+                {user.role === 'admin' && (
+                  <Link
+                    to="/admin"
+                    className="bg-wine-600 hover:bg-wine-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Admin
+                  </Link>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Link
+                  to="/login"
+                  className="text-charcoal-700 dark:text-primary-200 hover:text-wine-600 dark:hover:text-gold-400 text-sm font-medium"
+                >
+                  Login
+                </Link>
+                <Link
+                  to="/register"
+                  className="bg-wine-600 hover:bg-wine-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Sign Up
+                </Link>
+              </div>
+            )}
+
             {/* Theme toggle */}
             <motion.button
               onClick={toggleTheme}
