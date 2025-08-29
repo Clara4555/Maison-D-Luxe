@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, Shield, Ban, Trash2, Eye, MoreVertical } from 'lucide-react';
+import axios from 'axios';
 import toast from 'react-hot-toast';
 
 const UserManagement = () => {
@@ -7,17 +8,30 @@ const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('all');
   const [showDropdown, setShowDropdown] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mock users data
-    const mockUsers = [
-      { id: '1', name: 'John Doe', email: 'john@example.com', role: 'customer', status: 'active', joinDate: '2024-01-15', orders: 23 },
-      { id: '2', name: 'Jane Smith', email: 'jane@example.com', role: 'admin', status: 'active', joinDate: '2024-01-10', orders: 45 },
-      { id: '3', name: 'Mike Johnson', email: 'mike@example.com', role: 'customer', status: 'banned', joinDate: '2024-01-20', orders: 12 },
-      { id: '4', name: 'Sarah Wilson', email: 'sarah@example.com', role: 'customer', status: 'active', joinDate: '2024-01-25', orders: 8 },
-    ];
-    setUsers(mockUsers);
-  }, []);
+    fetchUsers();
+  }, [searchTerm, filterRole]);
+
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('/api/users', {
+        headers: { 'auth-token': token },
+        params: { 
+          search: searchTerm,
+          role: filterRole 
+        }
+      });
+      setUsers(response.data.users);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+      toast.error('Failed to load users');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -26,28 +40,67 @@ const UserManagement = () => {
     return matchesSearch && matchesRole;
   });
 
-  const handlePromoteToAdmin = (userId) => {
-    setUsers(users.map(user => 
-      user.id === userId ? { ...user, role: 'admin' } : user
-    ));
-    toast.success('User promoted to admin');
-    setShowDropdown(null);
-  };
-
-  const handleBanUser = (userId) => {
-    setUsers(users.map(user => 
-      user.id === userId ? { ...user, status: user.status === 'banned' ? 'active' : 'banned' } : user
-    ));
-    toast.success('User status updated');
-    setShowDropdown(null);
-  };
-
-  const handleDeleteUser = (userId) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
-      setUsers(users.filter(user => user.id !== userId));
-      toast.success('User deleted');
+  const handlePromoteToAdmin = async (userId) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(`/api/users/${userId}/role`, 
+        { role: 'admin' },
+        { headers: { 'auth-token': token } }
+      );
+      
+      setUsers(users.map(user => 
+        user._id === userId ? { ...user, role: 'admin' } : user
+      ));
+      toast.success('User promoted to admin');
       setShowDropdown(null);
+    } catch (error) {
+      console.error('Failed to promote user:', error);
+      toast.error('Failed to promote user');
     }
+  };
+
+  const handleToggleUserStatus = async (userId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.patch(`/api/users/${userId}/status`, {}, {
+        headers: { 'auth-token': token }
+      });
+      
+      setUsers(users.map(user => 
+        user._id === userId ? response.data : user
+      ));
+      toast.success('User status updated');
+      setShowDropdown(null);
+    } catch (error) {
+      console.error('Failed to update user status:', error);
+      toast.error('Failed to update user status');
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    if (window.confirm('Are you sure you want to delete this user?')) {
+      try {
+        const token = localStorage.getItem('token');
+        await axios.delete(`/api/users/${userId}`, {
+          headers: { 'auth-token': token }
+        });
+        
+        setUsers(users.filter(user => user._id !== userId));
+        toast.success('User deleted');
+        setShowDropdown(null);
+      } catch (error) {
+        console.error('Failed to delete user:', error);
+        toast.error('Failed to delete user');
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-wine-600"></div>
+      </div>
+    );
   };
 
   const getRoleColor = (role) => {
@@ -127,7 +180,7 @@ const UserManagement = () => {
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                <tr key={user._id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <img
@@ -149,28 +202,28 @@ const UserManagement = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(user.status)}`}>
-                      {user.status}
+                      {user.isActive ? 'active' : 'inactive'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {user.orders}
+                    0
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {new Date(user.joinDate).toLocaleDateString()}
+                    {new Date(user.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="relative">
                       <button
-                        onClick={() => setShowDropdown(showDropdown === user.id ? null : user.id)}
+                        onClick={() => setShowDropdown(showDropdown === user._id ? null : user._id)}
                         className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                       >
                         <MoreVertical className="w-4 h-4" />
                       </button>
-                      {showDropdown === user.id && (
+                      {showDropdown === user._id && (
                         <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg z-10 border border-gray-200 dark:border-gray-700">
                           <div className="py-1">
                             <button
-                              onClick={() => handlePromoteToAdmin(user.id)}
+                              onClick={() => handlePromoteToAdmin(user._id)}
                               className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                               disabled={user.role === 'admin'}
                             >
@@ -178,14 +231,14 @@ const UserManagement = () => {
                               Promote to Admin
                             </button>
                             <button
-                              onClick={() => handleBanUser(user.id)}
+                              onClick={() => handleToggleUserStatus(user._id)}
                               className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                             >
                               <Ban className="w-4 h-4 mr-2" />
-                              {user.status === 'banned' ? 'Unban User' : 'Ban User'}
+                              {user.isActive ? 'Deactivate User' : 'Activate User'}
                             </button>
                             <button
-                              onClick={() => handleDeleteUser(user.id)}
+                              onClick={() => handleDeleteUser(user._id)}
                               className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
                             >
                               <Trash2 className="w-4 h-4 mr-2" />
@@ -200,6 +253,19 @@ const UserManagement = () => {
               ))}
             </tbody>
           </table>
+        
+        {filteredUsers.length === 0 && (
+          <div className="text-center py-12">
+            <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No users found</h3>
+            <p className="text-gray-500 dark:text-gray-400">
+              {searchTerm || filterRole !== 'all' 
+                ? 'Try adjusting your search or filter criteria'
+                : 'Users will appear here when they register'
+              }
+            </p>
+          </div>
+        )}
         </div>
       </div>
     </div>
